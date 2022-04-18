@@ -7,20 +7,11 @@ clean = False
 
 # Colocar o cv2.Windows_Normal permite ajustar o quadro da imagem
 cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-
-# Resize the window and adjust it to the center
-# This is done so we're ready for capturing the images.
 cv2.resizeWindow('frame', 1920, 1080)
 cv2.moveWindow("frame", 0, 0)
 
 # Inicializando a webcam
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-
-# Valores para desenhar o boxe na tela
-posx = 200
-posy = 100
-window_width = posx + 200
-window_height = posy + 200
 
 # Irá salvar as imagens a cada 4 frames
 # Para não ter as mesmas imagens sempre
@@ -59,6 +50,7 @@ if not os.path.exists(directory):
 
 # Iniciar a captura das imagens e das caixas
 ret, frame = cap.read()
+# Tempo de execução das capturas
 time = 600
 
 while time >= 0:
@@ -73,18 +65,16 @@ while time >= 0:
         img_name = str(counter) + '.png'
         img_full_name = directory + '/' + str(counter) + '.png'
         cv2.imwrite(img_full_name, orig)
-        fr.write('{}:({},{},{},{}),'.format(counter, posx, posy, window_width, window_height))
+        fr.write('{}:({},{},{},{}),'.format(counter, 200, 100, 400, 300))
         counter += 1
         frame_gap = 0
-    cv2.rectangle(frame, (posx, posy), (window_width, window_height), (0, 255, 0), 3)
+    cv2.rectangle(frame, (200, 100), (400, 300), (0, 255, 0), 3)
     cv2.imshow('frame', frame)
     if cv2.waitKey(1) == ord('q'):
         break
     time -= 1
-    print(time)
     ret, frame = cap.read()
 
-# Release camera and close the file and window
 cap.release()
 cv2.destroyAllWindows()
 fr.close()

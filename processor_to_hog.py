@@ -4,89 +4,75 @@ import os
 import time
 import numpy as np
 
-# O dicionario ira guardar as imagens e a posição dos boxes.
-data = {}
-path = 'train_images_h/'
 
-# Pegar todos os index das imagens
-# percorre todos os arquivos no directório e fatia a string pegando tudo antes do ponto
-indexes = [int(img_name.split('.')[0]) for img_name in os.listdir(path)]
+def train_detector():
+    # O dicionario ira guardar as imagens e a posição dos boxes.
+    # Salvar o caminho da imagem
+    # percorre todos os arquivos no directório e fatia a string pegando tudo antes do ponto
+    data = {}
+    path = 'train_images_h/'
+    indexes = [int(img_name.split('.')[0]) for img_name in os.listdir(path)]
+    np.random.shuffle(indexes)
 
-# Colocar os indices das imagens aleatorios para diferenciar sempre que rodar o treinamento
-np.random.shuffle(indexes)
+    # Abrir e ler o arquivo
+    # Convertendo os boxes para o dicionário
+    f = open('boxes_h.txt', "r")
+    boxes = f.read()
+    box_dict = eval('{' + boxes + '}')
+    f.close()
 
-# Abrir e ler o arquivo
-f = open('boxes_h.txt', "r")
-boxes = f.read()
-
-# Convertendo os boxes para o dicionário
-box_dict =  eval( '{' + boxes + '}')
-
-# fechar o arquivo
-f.close()
-
-# Percorrer todas as imagens
-for index in indexes:
+    # Percorrer todas as imagens
     # Ler a imagem do directorio de treino
-    img = cv2.imread(os.path.join(path, str(index) + '.png'))
     # Ler os boxes associados as imagens de acordo com o index
-    bounding_box = box_dict[index]
     # Converter os boxes compatível com o dlib
-    l, t, r, b = bounding_box
-    dlib_box = [dlib.rectangle(left=l, top=t, right=r, bottom=b)]
     # Salvar a imagem e as boxes
-    data[index] = (img, dlib_box)
+    for index in indexes:
+        img = cv2.imread(os.path.join(path, str(index) + '.png'))
+        bounding_box = box_dict[index]
+        l, t, r, b = bounding_box
+        dlib_box = [dlib.rectangle(left=l, top=t, right=r, bottom=b)]
+        data[index] = (img, dlib_box)
 
-print('Numero de boxes e imagens associadas:', len(data))
+    print('Numero de boxes e imagens associadas:', len(data))
 
-# O percentual de treino e de teste
-percent = 0.8
+    # O percentual de treino de 80%
+    # Pegando a quantidade dos 80%
+    percent = 0.8
+    split = int(len(data) * percent)
 
-# Pegando a quantidade dos 80% definido anteriormente
-split = int(len(data) * percent)
+    # Separar as imagens e caixas
+    images = [tuple_value[0] for tuple_value in data.values()]
+    bounding_boxes = [tuple_value[1] for tuple_value in data.values()]
 
-# Separar as imagens e caixas
-images = [tuple_value[0] for tuple_value in data.values()]
-bounding_boxes = [tuple_value[1] for tuple_value in data.values()]
+    # Initialize object detector Options
+    # Ignorar diferença de espelhamento
+    # Valor 5 variável para cada caso
+    options = dlib.simple_object_detector_training_options()
+    options.add_left_right_image_flips = False
+    options.C = 5
 
-# Initialize object detector Options
-options = dlib.simple_object_detector_training_options()
+    # Executando o treinamento somente com os 80% da base capturada
+    detector = dlib.train_simple_object_detector(images[:split], bounding_boxes[:split], options)
 
-# Desabilitando esta opção ele ignora o espelhamento do objeto
-# por exemplo caso o objeto possa ser represantado da esquerda para direito e vise e versa
-options.add_left_right_image_flips = False
+    name_detector = 'Helmet_Detector.svm'
+    detector.save(name_detector)
 
-# para o nosso exemplo o valor 6 foi suficiente para detecção
-# Aqui podemos alterar os valores para se ajustar melhor ao objeto detectado
-options.C = 5
+    print("Metricas de treino: {}".format(
+        dlib.test_simple_object_detector(images[:split], bounding_boxes[:split], detector)))
+    print("Metricas de teste: {}".format(
+        dlib.test_simple_object_detector(images[split:], bounding_boxes[split:], detector)))
 
-# contar o tempo antes do treino
-st = time.time()
+#train_detector()
 
-detector = dlib.train_simple_object_detector(images[:split], bounding_boxes[:split], options)
-
-# Print the Total time taken to train the detector
-print('Training Completed, Total Time taken: {:.2f} seconds'.format(time.time() - st))
-
-file_name = 'Helmet_Detector.svm'
-detector.save(file_name)
-
-print("Metricas de treino: {}".format(dlib.test_simple_object_detector(images[:split], bounding_boxes[:split], detector)))
-print("Metricas de teste: {}".format(dlib.test_simple_object_detector(images[split:], bounding_boxes[split:], detector)))
-
-detector = dlib.train_simple_object_detector(images, bounding_boxes, options)
-detector.save(file_name)
-
-file_name = 'Helmet_Detector.svm'
-detector = dlib.simple_object_detector(file_name)
+name_detector = 'Helmet_Detector.svm'
+detector = dlib.simple_object_detector(name_detector)
 
 cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
-
 image = cv2.imread('emilly6.jpg')
 
 detections = detector(image)
 
-# Loop for each detection.
+# Rodando o loop para cada detecção e desenhando na tela
 for helmet in (detections):
     l, t, r, b = helmet.left(), helmet.top(), helmet.right(), helmet.bottom()
     cv2.rectangle(image, (l, t), (r, b), (0, 255, 0), 2)
